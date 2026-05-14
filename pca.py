@@ -1,14 +1,3 @@
-"""
-PCA on Gene Expression Data (GSE5325 - Nature Primer, Figure 1)
-================================================================
-Reproduces Figure 1a (XBP1 vs GATA3 scatter) and Figure 1c (PC1 projection)
-from: Ringnér M. (2008) What is principal component analysis? Nature Biotechnology.
-
-Data files expected at:
-  data/class.tsv          - binary labels (1=ER+, 0=ER-)
-  data/filtered.tsv.gz    - gene expression matrix (rows=samples, cols=probe keys)
-  data/columns.tsv.gz     - probe metadata (GEO soft format, includes GeneSymbol)
-"""
 
 import gzip
 import numpy as np
@@ -18,26 +7,20 @@ from matplotlib.gridspec import GridSpec
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 
-# ── Aesthetic config ──────────────────────────────────────────────────────────
-COLOR_POS  = "#E63946"   # ER+  → warm red
-COLOR_NEG  = "#457B9D"   # ER-  → steel blue
+COLOR_POS  = "#E63946"   
+COLOR_NEG  = "#457B9D"   
 MARKER_SZ  = 60
 ALPHA      = 0.80
 FONT_TITLE = 12
 FONT_LABEL = 10
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 1. LOAD LABELS
-# ─────────────────────────────────────────────────────────────────────────────
+
 print("Loading data ...")
 
 labels = pd.read_csv("data/class.tsv", sep="\t", header=None, names=["label"])
 y = labels["label"].values          # shape (105,)  1=ER+, 0=ER-
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 2. PARSE columns.tsv.gz  (GEO soft format)
-#    Lines starting with '#' are metadata; first clean line = header.
-# ─────────────────────────────────────────────────────────────────────────────
+
 print("  Parsing columns.tsv.gz ...")
 data_lines, header = [], None
 with gzip.open("data/columns.tsv.gz", "rt", encoding="utf-8", errors="replace") as f:
@@ -55,9 +38,8 @@ with gzip.open("data/columns.tsv.gz", "rt", encoding="utf-8", errors="replace") 
 col_map = pd.DataFrame(data_lines, columns=header)
 print(f"  col_map : {col_map.shape}  columns: {list(col_map.columns)}")
 
-# ─────────────────────────────────────────────────────────────────────────────
 # 3. LOAD EXPRESSION MATRIX
-# ─────────────────────────────────────────────────────────────────────────────
+
 print("  Loading filtered.tsv.gz ...")
 expr = pd.read_csv("data/filtered.tsv.gz", sep="\t", compression="gzip",
                    index_col=None)
@@ -66,9 +48,7 @@ print(f"  expr    : {expr.shape[0]} samples x {expr.shape[1]} probes")
 print(f"  labels  : {np.sum(y==1)} ER+  |  {np.sum(y==0)} ER-")
 print(f"  expr columns sample (first 5): {list(expr.columns[:5])}")
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 4. FIND WHICH col_map COLUMN MATCHES THE EXPR COLUMN SPACE
-# ─────────────────────────────────────────────────────────────────────────────
+
 expr_cols_set = set(expr.columns)
 best_key_col, best_n = None, 0
 for c in col_map.columns:
@@ -84,9 +64,8 @@ id_to_symbol = dict(zip(
     col_map["GeneSymbol"].astype(str)
 ))
 
-# ─────────────────────────────────────────────────────────────────────────────
 # 5. GENE LOOKUP HELPER
-# ─────────────────────────────────────────────────────────────────────────────
+
 symbol_to_probes = {}
 for probe_key, symbol in id_to_symbol.items():
     if probe_key in expr_cols_set:
@@ -109,9 +88,9 @@ gata3 = get_expression("GATA3")
 print(f"  XBP1  probes: {symbol_to_probes['XBP1']}  range: {xbp1.min():.2f}-{xbp1.max():.2f}")
 print(f"  GATA3 probes: {symbol_to_probes['GATA3']}  range: {gata3.min():.2f}-{gata3.max():.2f}")
 
-# ─────────────────────────────────────────────────────────────────────────────
+
 # 6. PCA on [GATA3, XBP1]
-# ─────────────────────────────────────────────────────────────────────────────
+
 X      = np.column_stack([gata3, xbp1])
 X_std  = StandardScaler().fit_transform(X)
 
@@ -125,9 +104,7 @@ print(f"\n  PCA variance -> PC1: {explained[0]*100:.1f}%   PC2: {explained[1]*10
 loadings = pd.DataFrame(pca.components_.T, index=["GATA3","XBP1"], columns=["PC1","PC2"])
 print(f"\n  PC Loadings:\n{loadings.round(4)}\n")
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 7. PLOT
-# ─────────────────────────────────────────────────────────────────────────────
+
 fig = plt.figure(figsize=(13, 5.5))
 fig.patch.set_facecolor("#FAFAFA")
 gs  = GridSpec(1, 2, figure=fig, wspace=0.38)
